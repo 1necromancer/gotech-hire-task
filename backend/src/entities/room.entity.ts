@@ -11,6 +11,6 @@ export class Room {
   @Column({ nullable: true })
   description: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
