@@ -1,45 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import ChatPage from './components/ChatPage';
-
-// FLAW: hardcoded URL (occurrence 1 of 4)
-const API_URL = 'http://localhost:3000';
+import { AppProvider } from './context/AppContext';
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [userId, setUserId] = useState<number | null>(
-    localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId')!) : null
+    localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId')!) : null,
   );
 
-  // FLAW: socket created on every render, not in useRef
-  const socket = io('http://localhost:3000');
-
-  const handleLogin = (newToken: string, newUserId: number) => {
+  const handleLogin = useCallback((newToken: string, newUserId: number) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('userId', String(newUserId));
     setToken(newToken);
     setUserId(newUserId);
-  };
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     setToken(null);
     setUserId(null);
-  };
+  }, []);
 
   return (
-    // No ErrorBoundary wrapping the app
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={token ? <Navigate to="/chat" /> : <LoginPage onLogin={handleLogin} />} />
         <Route path="/register" element={token ? <Navigate to="/chat" /> : <RegisterPage onLogin={handleLogin} />} />
         <Route
           path="/chat"
-          element={token ? <ChatPage token={token} userId={userId!} socket={socket} apiUrl={API_URL} onLogout={handleLogout} /> : <Navigate to="/login" />}
+          element={
+            token && userId ? (
+              <AppProvider token={token} userId={userId}>
+                <ChatPage onLogout={handleLogout} />
+              </AppProvider>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
         <Route path="*" element={<Navigate to={token ? '/chat' : '/login'} />} />
       </Routes>
